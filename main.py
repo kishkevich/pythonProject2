@@ -81,13 +81,52 @@ print ("14. Какая команда выиграла наибольшое ко
 print (reg_wins.sort_values(by='wins',ascending=False).head(1))
 
 #15. Какая команда выиграла наибольшее количество домашних матчей в сезоне?
-reg_season = data[data['season']=='regular season']
-reg_wins_home = pd.DataFrame(reg_season[reg_season['home_team_win'] >0].value_counts())
-reg_wins_home.set_axis(['wins'],axis='columns',inplace=True)
-reg_wins.index.name = 'team'
-print ("15. Какая команда выиграла наибольшее количество домашних матчей в сезоне?", end='\n')
-print (reg_wins_home.sort_values(by='wins',ascending=False).head(1))
+#reg_season = data[data['season']=='regular season']
+#reg_wins_home = pd.DataFrame(reg_season[reg_season['home_team_win'] >0].value_counts(), columns=["total_runs", "date", "away_team", "home_team" ])
+#reg_wins_home.set_axis(['wins'],axis='columns',inplace=True)
+#reg_wins.index.name = 'team'
+#print ("15. Какая команда выиграла наибольшее количество домашних матчей в сезоне?", end='\n')
+#print (reg_wins_home.sort_values(by='wins',ascending=False).head(1))
 
+#16. Какая команда выиграла наибольшее количество гостевых матчей в сезоне?
+season_games = games.drop(games[games.season == 'post season'].index).reset_index().drop(columns=['index'])
+home_team_wins = pd.pivot_table( season_games, index='home_team', values='home_team_win', aggfunc=np.sum)
+win_loss_games = season_games.drop(season_games[(season_games['home_team_loss'] == 0)
+                                                & (season_games['home_team_win'] == 0)].index)
+away_team_wins = pd.pivot_table( win_loss_games, index='away_team', values='home_team_loss', aggfunc=np.sum)
+team_wins = home_team_wins['home_team_win'] + away_team_wins['home_team_loss']
+team_wins.idxmax()
+print ("16. Какая команда выиграла наибольшее количество гостевых матчей в сезоне?", end='\n')
+print (away_team_wins['home_team_loss'].idxmax())
 
+#17. Какая команда проиграла наибольшее количество матчей в сезоне?
+home_team_loss = pd.pivot_table( win_loss_games, index='home_team', values='home_team_loss', aggfunc=np.sum)
+away_team_loss = pd.pivot_table( season_games, index='away_team', values='home_team_win', aggfunc=np.sum)
+team_loss = home_team_loss['home_team_loss'] + away_team_loss['home_team_win']
+print ("#17. Какая команда проиграла наибольшее количество матчей в сезоне?", end='\n')
+print (team_loss.idxmax())
 
+#18. Зависит ли выигрыш от количества посетителей матча?
+print ("18. Зависит ли выигрыш от количества посетителей матча?", end='\n')
+if abs(season_games.corr()['attendance']['home_team_win']) > 0.1: #abs возвращает абсолютное значение
+    print("Есть некоторая зависимость!")
+else:
+    print("нет")
 
+#19. Правда ли что большинство проигрышных домашних матчей приходятся на Субботу и Воскресенье?
+print ("19. Правда ли что большинство проигрышных домашних матчей приходятся на Субботу и Воскресенье?", end='\n')
+day_home_loss = pd.pivot_table( win_loss_games, index='day_of_week', values='home_team_loss', aggfunc=np.sum)
+weekend_loss_number = day_home_loss['home_team_loss']['Sunday'] + day_home_loss['home_team_loss']['Saturday']
+if weekend_loss_number > (day_home_loss.sum()['home_team_loss'] - weekend_loss_number):
+    print("Большинство домашних проигрышей происходят по выходным!")
+else:
+    print("Большинство домашних проигрышей происходят по будням!")
+
+#20. Правда ли что наибольшее количество ранов происходит в холодную погоду?
+print ("20. Правда ли что наибольшее количество ранов происходит в холодную погоду?", end='\n')
+season_games['cold_weather'] = season_games.apply(lambda row: (1,0)[(row['temperature'] - 32) * 5 / 9 < 0], axis=1)
+temperature_runs = pd.pivot_table(season_games, index='cold_weather', values='total_runs', aggfunc=np.sum)
+if temperature_runs['total_runs'][0] > temperature_runs['total_runs'][1]:
+    print("Большинство ранов произошло в холодную погоду!")
+else:
+    print("Большинство ранов произошло в теплую погоду!")
